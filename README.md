@@ -15,22 +15,21 @@ Install FilePond component from npm.
 npm install ngx-filepond filepond --save
 ```
 
+The `ngx-filepond` will lazyload the `filepond` package when it needs and will automatic register the plugin for you.
 Import `FilePondModule` and if needed register any plugins. Please note that plugins need to be [installed from npm](https://pqina.nl/filepond/docs/patterns/plugins/introduction/#installing-plugins) separately.
 
 Add FilePond styles path `./node_modules/filepond/dist/filepond.min.css` to the `build.options.styles` property in `angular.json`
 
-```ts
-// app.module.ts
+
+```typescript
 import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
+
 import { AppComponent } from './app.component';
 
-// import filepond module
-import { FilePondModule, registerPlugin } from 'ngx-filepond';
-
-// import and register filepond file type validation plugin
-import FilePondPluginFileValidateType from 'filepond-plugin-file-validate-type';
-registerPlugin(FilePondPluginFileValidateType);
+import { FilePondModule, FILEPOND_PLUGINS_TOKEN } from 'ngx-filepond';
+// uncomment these to eager loading the plugins
+// import { plugins } from './plugins';
 
 @NgModule({
   declarations: [
@@ -38,12 +37,33 @@ registerPlugin(FilePondPluginFileValidateType);
   ],
   imports: [
     BrowserModule,
-    FilePondModule // add filepond module here
+    FilePondModule
   ],
-  providers: [],
+  providers: [
+    // uncomment these to eager loading the plugins
+    // {
+    //   provide: FILEPOND_PLUGINS_TOKEN,
+    //   useValue: plugins
+    // },
+    // lazyload the plugins
+    {
+      provide: FILEPOND_PLUGINS_TOKEN,
+      useFactory: async () => {
+        return (await import('./plugins')).plugins;
+      }
+    }
+  ],
   bootstrap: [AppComponent]
 })
 export class AppModule { }
+```
+
+in `plugins.ts`
+```typescript
+import FilePondPluginImageExifOrientation from 'filepond-plugin-image-exif-orientation';
+import FilePondPluginImagePreview from 'filepond-plugin-image-preview';
+
+export const plugins = [FilePondPluginImageExifOrientation, FilePondPluginImagePreview];
 ```
 
 ```html
