@@ -3,12 +3,9 @@ import { NgModule } from '@angular/core';
 
 import { AppComponent } from './app.component';
 
-import { FilePondModule, registerPlugin } from './modules/filepond/filepond.module';
-
-import FilePondPluginImageExifOrientation from 'filepond-plugin-image-exif-orientation';
-import FilePondPluginImagePreview from 'filepond-plugin-image-preview';
-
-registerPlugin(FilePondPluginImageExifOrientation, FilePondPluginImagePreview);
+import { FilePondModule, FILEPOND_PLUGINS_TOKEN } from './modules/filepond/public_api';
+// uncomment these to eager loading the plugins
+// import { plugins } from './plugins';
 
 @NgModule({
   declarations: [
@@ -18,7 +15,19 @@ registerPlugin(FilePondPluginImageExifOrientation, FilePondPluginImagePreview);
     BrowserModule,
     FilePondModule
   ],
-  providers: [],
+  providers: [
+    // uncomment these to eager loading the plugins
+    // {
+    //   provide: FILEPOND_PLUGINS_TOKEN,
+    //   useValue: plugins
+    // },
+    {
+      provide: FILEPOND_PLUGINS_TOKEN,
+      useFactory: async () => {
+        return (await import('./plugins')).plugins;
+      }
+    }
+  ],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

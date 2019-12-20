@@ -1,190 +1,188 @@
-import { 
-  Component,
-  ElementRef,
-  SimpleChanges,
-  ViewEncapsulation,
-  EventEmitter,
-  NgZone,
-  Output, 
-  Input
+import {
+    Component,
+    ElementRef,
+    SimpleChanges,
+    ViewEncapsulation,
+    EventEmitter,
+    NgZone,
+    Output,
+    Input,
+    AfterViewInit,
+    OnChanges,
+    OnDestroy
 } from '@angular/core';
 
 import {
-  create,
-  supported
-} from 'filepond';
-
-// We test if filepond is supported on the current client
-const isSupported: Boolean = supported();
+    FilePondService
+} from './filepond.service';
 
 // List of attributes for fallback input
 const inputAttributes: Array<string> = [
-  'id', 
-  'name',
-  'class', 
-  'multiple', 
-  'required', 
-  'disabled',
-  'capture',
-  'accept'
+    'id',
+    'name',
+    'class',
+    'multiple',
+    'required',
+    'disabled',
+    'capture',
+    'accept'
 ];
 
 // Methods not made available on the component
 const filteredComponentMethods: Array<string> = [
-  'setOptions',
-  'on',
-  'off',
-  'onOnce',
-  'appendTo',
-  'insertAfter',
-  'insertBefore',
-  'isAttachedTo',
-  'replaceElement',
-  'restoreElement',
-  'destroy'
+    'setOptions',
+    'on',
+    'off',
+    'onOnce',
+    'appendTo',
+    'insertAfter',
+    'insertBefore',
+    'isAttachedTo',
+    'replaceElement',
+    'restoreElement',
+    'destroy'
 ];
 
 const outputs: Array<string> = [
-  'oninit', 
-  'onwarning', 
-  'onerror', 
-  'onactivatefile',
-  'onaddfilestart', 
-  'onaddfileprogress', 
-  'onaddfile', 
-  'onprocessfilestart', 
-  'onprocessfileprogress', 
-  'onprocessfileabort', 
-  'onprocessfilerevert', 
-  'onprocessfile',
-  'onprocessfiles',
-  'onremovefile',
-  'onpreparefile',
-  'onupdatefiles'
+    'oninit',
+    'onwarning',
+    'onerror',
+    'onactivatefile',
+    'onaddfilestart',
+    'onaddfileprogress',
+    'onaddfile',
+    'onprocessfilestart',
+    'onprocessfileprogress',
+    'onprocessfileabort',
+    'onprocessfilerevert',
+    'onprocessfile',
+    'onprocessfiles',
+    'onremovefile',
+    'onpreparefile',
+    'onupdatefiles'
 ];
 
 // Component outline
 @Component({
-  selector: 'file-pond',
-  encapsulation: ViewEncapsulation.None,
-  templateUrl: './filepond.component.html',
-  styleUrls: ['./filepond.component.css'],
-  outputs
+    // tslint:disable-next-line:component-selector
+    selector: 'file-pond',
+    encapsulation: ViewEncapsulation.None,
+    templateUrl: './filepond.component.html',
+    styleUrls: ['./filepond.component.css'],
+    outputs
 })
 
-export class FilePondComponent {
+export class FilePondComponent implements AfterViewInit, OnChanges, OnDestroy {
 
-  @Input()
-  options: Object = {};
+    @Input()
+    options: Object = {};
 
-  @Input()
-  files: Array<any>;
+    @Input()
+    files: Array<any>;
 
-  private root: ElementRef;
-  private zone: NgZone;
-  private pond: any;
-  private handleEvent: Function = null;
+    private filepond: any;
+    private pond: any;
+    private handleEvent: Function = null;
 
-  constructor(root: ElementRef, zone: NgZone) {
-    this.root = root;
-    this.zone = zone;
+    constructor(private root: ElementRef, private zone: NgZone, private filePondService: FilePondService) {
+        filePondService.lazyload().then(filepond => this.filepond = filepond);
 
-    outputs.forEach(output => {
-      this[output] = new EventEmitter<any>();
-    });
-  }
-
-  ngAfterViewInit() {
-
-    const input = this.root.nativeElement.querySelector('input');
-
-    // transfer relevant attributes to input, this so we still have an input with the correct attributes should file pond not load
-    const attributes = this.root.nativeElement.attributes;
-    inputAttributes.forEach(name => {
-      const value = attributes[name] ? attributes[name].value : this.options[name];
-      if (!value) {
-        return;
-      }
-      input.setAttribute(name, value);
-    });
-
-    // no sufficient features supported in this browser
-    if (!isSupported) {
-      return;
+        outputs.forEach(output => {
+            this[output] = new EventEmitter<any>();
+        });
     }
 
-    // map FilePond events to Angular $emitters
-    this.handleEvent = (e) => {
-      this[`on${e.type.split(':')[1]}`].emit({...e.detail});
-    };
-    outputs.forEach(event => {
-      this.root.nativeElement.addEventListener(`FilePond:${ event.substr(2) }`, this.handleEvent);
-    });
-  
-    // will block angular from listening to events inside the pond
-    this.zone.runOutsideAngular(() => {
-      
-      // create instance
-      this.pond = create(input, {
-          // our options
-          ...this.options, 
+    async ngAfterViewInit() {
 
-          // our initial files
-          files: this.files
+        const input = this.root.nativeElement.querySelector('input');
+
+        // transfer relevant attributes to input, this so we still have an input with the correct attributes should file pond not load
+        const attributes = this.root.nativeElement.attributes;
+        inputAttributes.forEach(name => {
+            const value = attributes[name] ? attributes[name].value : this.options[name];
+            if (!value) {
+                return;
+            }
+            input.setAttribute(name, value);
+        });
+
+        // no sufficient features supported in this browser
+        if (!(await this.filePondService.isSupported())) {
+            return;
         }
-      );
 
-    });
+        // map FilePond events to Angular $emitters
+        this.handleEvent = (e) => {
+            this[`on${e.type.split(':')[1]}`].emit({...e.detail});
+        };
+        outputs.forEach(event => {
+            this.root.nativeElement.addEventListener(`FilePond:${event.substr(2)}`, this.handleEvent);
+        });
 
-    // Copy instance method references to component instance
-    Object.keys(this.pond)
-      
-      // remove unwanted methods
-      .filter(key => filteredComponentMethods.indexOf(key) === -1)
-      
-      // set method references from the component instance to the pond instance
-      .forEach(key => {
-        this[key] = this.pond[key];
-      });
+        // will block angular from listening to events inside the pond
+        this.zone.runOutsideAngular(() => {
 
-  }
+            // create instance
+            this.pond = this.filepond.create(input, {
+                    // our options
+                    ...this.options,
 
-  ngOnChanges(changes: SimpleChanges) {
+                    // our initial files
+                    files: this.files
+                }
+            );
 
-    // no need to handle first change
-    if (changes.firstChange) {
-      return;
-    };
+        });
 
-    // no filepond instance available
-    if (!this.pond) {
-      return;
+        // Copy instance method references to component instance
+        Object.keys(this.pond)
+
+        // remove unwanted methods
+            .filter(key => filteredComponentMethods.indexOf(key) === -1)
+
+            // set method references from the component instance to the pond instance
+            .forEach(key => {
+                this[key] = this.pond[key];
+            });
+
     }
 
-    // use new options object as base ( or if not available, use current options )
-    const options = changes.options ? changes.options.currentValue : this.options;
+    ngOnChanges(changes: SimpleChanges) {
 
-    // see if file list has changed
-    if (changes.files && JSON.stringify(changes.files.previousValue) !== JSON.stringify(changes.files.currentValue)) {
-     
-      // file list has changed
-      options.files = changes.files.currentValue;
+        // no need to handle first change
+        if (changes.firstChange) {
+            return;
+        }
+
+        // no filepond instance available
+        if (!this.pond) {
+            return;
+        }
+
+        // use new options object as base ( or if not available, use current options )
+        const options = changes.options ? changes.options.currentValue : this.options;
+
+        // see if file list has changed
+        if (changes.files && JSON.stringify(changes.files.previousValue) !== JSON.stringify(changes.files.currentValue)) {
+
+            // file list has changed
+            options.files = changes.files.currentValue;
+        }
+
+        // set new options
+        this.pond.setOptions(options);
     }
-    
-    // set new options
-    this.pond.setOptions(options);
-  }
 
-  ngOnDestroy() {
-    if (!this.pond) {
-        return;
+    ngOnDestroy() {
+        if (!this.pond) {
+            return;
+        }
+
+        outputs.forEach(event => {
+            this.root.nativeElement.removeEventListener(`FilePond:${event.substr(2)}`, this.handleEvent);
+        });
+
+        this.pond.destroy();
     }
-
-    outputs.forEach(event => {
-      this.root.nativeElement.removeEventListener(`FilePond:${ event.substr(2) }`, this.handleEvent);
-    });
-
-    this.pond.destroy();
-  }
 
 }

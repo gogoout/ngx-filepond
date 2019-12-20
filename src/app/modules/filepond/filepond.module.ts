@@ -3,8 +3,6 @@ import { CommonModule } from '@angular/common';
 
 import { FilePondComponent } from './filepond.component';
 
-export { registerPlugin } from 'filepond';
-
 @NgModule({
   imports: [
     CommonModule
