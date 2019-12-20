@@ -15,7 +15,6 @@ Install FilePond component from npm.
 npm install ngx-filepond filepond --save
 ```
 
-The `ngx-filepond` will lazyload the `filepond` package when it needs and will automatic register the plugin for you.
 Import `FilePondModule` and if needed register any plugins. Please note that plugins need to be [installed from npm](https://pqina.nl/filepond/docs/patterns/plugins/introduction/#installing-plugins) separately.
 
 Add FilePond styles path `./node_modules/filepond/dist/filepond.min.css` to the `build.options.styles` property in `angular.json`
