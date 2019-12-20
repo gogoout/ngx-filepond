@@ -8,7 +8,7 @@ import { Component, ViewChild } from '@angular/core';
 
 export class AppComponent {
 
-  @ViewChild('myPond', { static: true }) myPond: any;
+  @ViewChild('myPond', { static: false }) myPond: any;
 
   pondOptions = {
     multiple: true,
